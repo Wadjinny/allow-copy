@@ -2,6 +2,10 @@
 
 Browser extension that unlocks text selection and copy on pages that block it. Enable it from the popup for the current tab.
 
+## Download
+
+Chrome and Firefox zips are attached to each [release](https://github.com/Wadjinny/allow-copy/releases/latest). For Chrome, unzip and use **Load unpacked** in `chrome://extensions`.
+
 ## Usage
 
 1. Open a normal `http(s)` page.

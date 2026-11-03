@@ -1,0 +1,67 @@
+name: Build extension
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish as a release (e.g. v0.1.0). Leave empty for a plain build.
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || (startsWith(github.ref, 'refs/tags/v') && github.ref_name) || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Zip (Chrome and Firefox)
+        run: |
+          npm run zip
+          npm run zip:firefox
+
+      - name: Upload Chrome artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allow-copy-chrome
+          path: .output/chrome-mv3
+          if-no-files-found: error
+          include-hidden-files: true
+
+      - name: Upload Firefox artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: allow-copy-firefox
+          path: .output/firefox-mv2
+          if-no-files-found: error
+          include-hidden-files: true
+
+      - name: Publish GitHub release
+        if: env.TAG != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" .output/*.zip -R "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create "$TAG" .output/*.zip -R "$GITHUB_REPOSITORY" --title "$TAG" --generate-notes --verify-tag
+          fi
